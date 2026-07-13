@@ -40,6 +40,6 @@ public class CommonExceptionHandler {
   public ResponseEntity<ErrorResponse> handleServiceUnavailable(HttpServerErrorException ex) {
     LOG.error("Exception happened", ex);
     return new ResponseEntity<>(new ErrorResponse(List.of("Service unavailable")),
-        HttpStatus.SERVICE_UNAVAILABLE);
+        HttpStatus.BAD_GATEWAY);
   }
 }
