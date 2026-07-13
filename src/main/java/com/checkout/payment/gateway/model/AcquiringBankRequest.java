@@ -20,4 +20,23 @@ public class AcquiringBankRequest {
     this.cvv = cvv;
   }
 
+  public String getCardNumber() {
+    return cardNumber;
+  }
+
+  public String getExpiryDate() {
+    return expiryDate;
+  }
+
+  public String getCurrency() {
+    return currency;
+  }
+
+  public int getAmount() {
+    return amount;
+  }
+
+  public String getCvv() {
+    return cvv;
+  }
 }

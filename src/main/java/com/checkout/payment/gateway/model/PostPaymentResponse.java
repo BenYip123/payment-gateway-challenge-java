@@ -2,6 +2,7 @@ package com.checkout.payment.gateway.model;
 
 import com.checkout.payment.gateway.enums.PaymentStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import java.util.UUID;
 
 public class PostPaymentResponse {
@@ -16,6 +17,7 @@ public class PostPaymentResponse {
   private String currency;
   private int amount;
 
+  private List<String> errors;
 
   public UUID getId() {
     return id;
@@ -72,6 +74,10 @@ public class PostPaymentResponse {
   public void setAmount(int amount) {
     this.amount = amount;
   }
+
+  public List<String> getErrors() { return errors; }
+
+  public void setErrors(List<String> errors) { this.errors = errors; }
 
   @Override
   public String toString() {

@@ -1,10 +1,10 @@
 package com.checkout.payment.gateway.controller;
 
+import com.checkout.payment.gateway.enums.PaymentStatus;
 import com.checkout.payment.gateway.model.PostPaymentRequest;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.service.PaymentGatewayService;
 import java.util.UUID;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,9 +28,14 @@ public class PaymentGatewayController {
   }
 
   @PostMapping("/payment")
-  public ResponseEntity<PostPaymentResponse> processPayment(@Valid @RequestBody PostPaymentRequest request) {
+  public ResponseEntity<PostPaymentResponse> processPayment(@RequestBody PostPaymentRequest request) {
     PostPaymentResponse response = paymentGatewayService.processPayment(request);
-    return new ResponseEntity<>(response, HttpStatus.CREATED);
+
+    // when Payment status is rejected (usually from validation check), we return a 200
+    HttpStatus status = response.getStatus() == PaymentStatus.REJECTED
+        ? HttpStatus.OK
+        : HttpStatus.CREATED;
+    return new ResponseEntity<>(response, status);
   }
 
 }

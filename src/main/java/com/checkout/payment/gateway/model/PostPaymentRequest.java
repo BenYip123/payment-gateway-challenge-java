@@ -17,21 +17,21 @@ public class PostPaymentRequest implements Serializable {
 
   @JsonProperty("card_number")
   @NotBlank
-  @Size(min = 14, max = 19)
-  @Pattern(regexp = "\\d+")
+  @Size(min = 14, max = 19, message = "Card number must be 14-19 numeric characters")
+  @Pattern(regexp = "\\d+", message = "Card number must only contain numeric characters")
   private String cardNumber;
 
   @JsonProperty("expiry_month")
   @NotNull
-  @Min(1)
-  @Max(12)
+  @Min(value = 1, message = "Expiry month must be between 1 and 12")
+  @Max(value = 12, message = "Expiry month must be between 1 and 12")
   private int expiryMonth;
 
   @JsonProperty("expiry_year")
   @NotNull
   private int expiryYear;
 
-  @Pattern(regexp = "^[A-Z]{3}$")
+  @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be 3 letters")
   @NotBlank
   @SupportedCurrency
   private String currency;
