@@ -44,7 +44,7 @@ class PaymentGatewayControllerTest {
 
     paymentsRepository.add(payment);
 
-    mvc.perform(MockMvcRequestBuilders.get("/payment/" + payment.getId()))
+    mvc.perform(MockMvcRequestBuilders.get("/v1/payment/" + payment.getId()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(payment.getStatus().getName()))
         .andExpect(jsonPath("$.card_number_last_four").value(payment.getCardNumberLastFour()))
@@ -56,7 +56,7 @@ class PaymentGatewayControllerTest {
 
   @Test
   void whenPaymentWithIdDoesNotExistThen404IsReturned() throws Exception {
-    mvc.perform(MockMvcRequestBuilders.get("/payment/" + UUID.randomUUID()))
+    mvc.perform(MockMvcRequestBuilders.get("/v1/payment/" + UUID.randomUUID()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.message[0]").value("Payment not found"));
   }
@@ -66,7 +66,7 @@ class PaymentGatewayControllerTest {
   void whenValidOddCardThenAuthorized() throws Exception {
     PostPaymentRequest request = validRequest();
 
-    MvcResult result = mvc.perform(post("/payment")
+    MvcResult result = mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isCreated())
@@ -85,7 +85,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setCardNumber("4242405343248872");
 
-    MvcResult result = mvc.perform(post("/payment")
+    MvcResult result = mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isCreated())
@@ -105,7 +105,7 @@ class PaymentGatewayControllerTest {
     request.setCardNumber("4242405343248870");
 
     // when card number ends with zero, the simulator returns a 503 without doing anything else
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isBadGateway());
@@ -116,7 +116,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setCurrency("HKD");
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -129,7 +129,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setExpiryYear(2020);
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -142,7 +142,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setCvv("");
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -155,7 +155,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setCardNumber("123abc");
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -169,7 +169,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setExpiryMonth(13);
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -182,7 +182,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setCurrency("A23");
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -195,7 +195,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setAmount(-1000);
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -208,7 +208,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
     request.setCvv("ABC");
 
-    mvc.perform(post("/payment")
+    mvc.perform(post("/v1/payment")
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())

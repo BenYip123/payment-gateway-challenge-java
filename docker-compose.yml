@@ -1,6 +1,15 @@
 version: "3.8"
 
 services:
+  app:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      - acquiring-bank.url=http://bank_simulator:8080
+    depends_on:
+      - bank_simulator
+
   bank_simulator:
     container_name: bank_simulator
     image: bbyars/mountebank:2.8.1
