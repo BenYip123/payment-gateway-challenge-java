@@ -40,7 +40,7 @@ class PaymentGatewayServiceTest {
     request.setCardNumber("4242405343248871");
     request.setExpiryMonth(12);
     request.setExpiryYear(2027);
-    request.setCurrency("USD");
+    request.setCurrency("GBP");
     request.setAmount(1050);
     request.setCvv("123");
 
@@ -64,7 +64,7 @@ class PaymentGatewayServiceTest {
     request.setCardNumber("4242405343248871");
     request.setExpiryMonth(12);
     request.setExpiryYear(2027);
-    request.setCurrency("USD");
+    request.setCurrency("GBP");
     request.setAmount(1050);
     request.setCvv("123");
 
@@ -88,7 +88,7 @@ class PaymentGatewayServiceTest {
     request.setCardNumber("4242405343248871");
     request.setExpiryMonth(12);
     request.setExpiryYear(2027);
-    request.setCurrency("USD");
+    request.setCurrency("GBP");
     request.setAmount(1050);
     request.setCvv("123");
 
@@ -105,7 +105,7 @@ class PaymentGatewayServiceTest {
     existing.setId(id);
     existing.setStatus(PaymentStatus.AUTHORIZED);
     existing.setAmount(1050);
-    existing.setCurrency("USD");
+    existing.setCurrency("GBP");
 
     paymentsRepository.add(existing);
 
@@ -120,6 +120,7 @@ class PaymentGatewayServiceTest {
     UUID id = UUID.randomUUID();
 
     assertThatThrownBy(() -> paymentGatewayService.getPaymentById(id))
-        .isInstanceOf(PaymentNotFoundException.class);
+        .isInstanceOf(PaymentNotFoundException.class)
+        .hasMessage("Payment with ID " + id + " not found");
   }
 }

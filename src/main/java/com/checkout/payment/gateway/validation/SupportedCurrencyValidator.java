@@ -7,6 +7,7 @@ import java.util.Set;
 
 public class SupportedCurrencyValidator implements ConstraintValidator<SupportedCurrency, String> {
 
+  // hardcoded currencies for the purpose of this challenge
   private static final Set<String> SUPPORTED = Set.of("USD", "GBP", "EUR");
 
   @Override

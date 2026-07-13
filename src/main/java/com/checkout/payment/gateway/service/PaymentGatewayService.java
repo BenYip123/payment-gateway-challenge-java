@@ -31,11 +31,18 @@ public class PaymentGatewayService {
     this.validator = validator;
   }
 
+  public PostPaymentResponse getPaymentById(UUID id) {
+    LOG.debug("Requesting access to payment with ID {}", id);
+    return paymentsRepository.get(id)
+        .orElseThrow(() -> new PaymentNotFoundException("Payment with ID " + id + " not found"));
+  }
+
   public PostPaymentResponse processPayment(PostPaymentRequest request) {
-    // Manually validate using Bean Validation API
+    // Validate annotations using Bean Validation API
     Set<ConstraintViolation<PostPaymentRequest>> violations = validator.validate(request);
 
     if (!violations.isEmpty()) {
+      // store violations in the response
       return createRejectedResponse(violations);
     }
 
@@ -43,12 +50,6 @@ public class PaymentGatewayService {
     AcquiringBankResponse bankResponse = acquiringBankClient.process(bankRequest);
     PaymentStatus status = mapAcquiringBankResponse(bankResponse);
     return createAndPersist(request, status);
-  }
-
-  public PostPaymentResponse getPaymentById(UUID id) {
-    LOG.debug("Requesting access to payment with ID {}", id);
-    return paymentsRepository.get(id)
-        .orElseThrow(() -> new PaymentNotFoundException("Payment with ID " + id + " not found"));
   }
 
   private AcquiringBankRequest buildAcquiringBankRequest(PostPaymentRequest request) {

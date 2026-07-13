@@ -17,7 +17,7 @@ public class RestTemplateAcquiringBankClient implements AcquiringBankClient {
 
   public RestTemplateAcquiringBankClient(
       RestTemplate restTemplate,
-      @Value("${acquiring-bank.url:http://localhost:8080}") String url) {
+      @Value("${acquiring-bank.url:http://localhost:8080}") String url) { // use http://localhost:8080 if acquiring bank not set to connect to simulator
     this.restTemplate = restTemplate;
     this.url = url;
   }

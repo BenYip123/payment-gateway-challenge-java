@@ -36,7 +36,7 @@ class PaymentGatewayControllerTest {
     PostPaymentResponse payment = new PostPaymentResponse();
     payment.setId(UUID.randomUUID());
     payment.setAmount(10);
-    payment.setCurrency("USD");
+    payment.setCurrency("GBP");
     payment.setStatus(PaymentStatus.AUTHORIZED);
     payment.setExpiryMonth(12);
     payment.setExpiryYear(2024);
@@ -223,7 +223,7 @@ class PaymentGatewayControllerTest {
     request.setCardNumber("4242405343248871");
     request.setExpiryMonth(12);
     request.setExpiryYear(2027);
-    request.setCurrency("USD");
+    request.setCurrency("GBP");
     request.setAmount(1050);
     request.setCvv("123");
     return request;
