@@ -1,6 +1,9 @@
 package com.checkout.payment.gateway.service;
 
-import com.checkout.payment.gateway.exception.EventProcessingException;
+import com.checkout.payment.gateway.enums.PaymentStatus;
+import com.checkout.payment.gateway.exception.PaymentNotFoundException;
+import com.checkout.payment.gateway.model.AcquiringBankRequest;
+import com.checkout.payment.gateway.model.AcquiringBankResponse;
 import com.checkout.payment.gateway.model.PostPaymentRequest;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
@@ -15,17 +18,52 @@ public class PaymentGatewayService {
   private static final Logger LOG = LoggerFactory.getLogger(PaymentGatewayService.class);
 
   private final PaymentsRepository paymentsRepository;
+  private final AcquiringBankClient acquiringBankClient;
 
-  public PaymentGatewayService(PaymentsRepository paymentsRepository) {
+  public PaymentGatewayService(PaymentsRepository paymentsRepository, AcquiringBankClient acquiringBankClient) {
     this.paymentsRepository = paymentsRepository;
+    this.acquiringBankClient = acquiringBankClient;
+  }
+
+  public PostPaymentResponse processPayment(PostPaymentRequest request) {
+    AcquiringBankRequest bankRequest = buildAcquiringBankRequest(request);
+    AcquiringBankResponse bankResponse = acquiringBankClient.process(bankRequest);
+    PaymentStatus status = mapAcquiringBankResponse(bankResponse);
+    return createAndPersist(request, status);
   }
 
   public PostPaymentResponse getPaymentById(UUID id) {
-    LOG.debug("Requesting access to to payment with ID {}", id);
-    return paymentsRepository.get(id).orElseThrow(() -> new EventProcessingException("Invalid ID"));
+    LOG.debug("Requesting access to payment with ID {}", id);
+    return paymentsRepository.get(id)
+        .orElseThrow(() -> new PaymentNotFoundException("Payment with ID " + id + " not found"));
   }
 
-  public UUID processPayment(PostPaymentRequest paymentRequest) {
-    return UUID.randomUUID();
+  private AcquiringBankRequest buildAcquiringBankRequest(PostPaymentRequest request) {
+    return new AcquiringBankRequest(
+        request.getCardNumber(),
+        request.getExpiryDate(),
+        request.getCurrency(),
+        request.getAmount(),
+        request.getCvv()
+    );
+  }
+
+  private PaymentStatus mapAcquiringBankResponse(AcquiringBankResponse response) {
+    return response.isAuthorized() ? PaymentStatus.AUTHORIZED : PaymentStatus.DECLINED;
+  }
+
+  private PostPaymentResponse createAndPersist(PostPaymentRequest request, PaymentStatus status) {
+    PostPaymentResponse response = new PostPaymentResponse();
+    response.setId(UUID.randomUUID());
+    response.setStatus(status);
+    response.setCardNumberLastFour(request.getCardNumberLastFour());
+    response.setExpiryMonth(request.getExpiryMonth());
+    response.setExpiryYear(request.getExpiryYear());
+    response.setCurrency(request.getCurrency());
+    response.setAmount(request.getAmount());
+    paymentsRepository.add(response);
+    LOG.info("Payment {} processed with status {}", response.getId(), status);
+    return response;
   }
 }
+

@@ -1,13 +1,15 @@
 package com.checkout.payment.gateway.model;
 
-public class ErrorResponse {
-  private final String message;
+import java.util.List;
 
-  public ErrorResponse(String message) {
-    this.message = message;
+public class ErrorResponse {
+  private final List<String> message;
+
+  public ErrorResponse(List<String> messages) {
+    this.message = messages;
   }
 
-  public String getMessage() {
+  public List<String> getMessage() {
     return message;
   }
 
