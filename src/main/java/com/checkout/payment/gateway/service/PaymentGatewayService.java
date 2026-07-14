@@ -42,6 +42,9 @@ public class PaymentGatewayService {
     Set<ConstraintViolation<PostPaymentRequest>> violations = validator.validate(request);
 
     if (!violations.isEmpty()) {
+      LOG.warn("Payment request validation failed: {}", violations.stream()
+          .map(ConstraintViolation::getMessage)
+          .collect(Collectors.toList()));
       // store violations in the response
       return createRejectedResponse(violations);
     }
