@@ -12,6 +12,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,11 +26,13 @@ public class PaymentGatewayService {
   private final PaymentsRepository paymentsRepository;
   private final AcquiringBankClient acquiringBankClient;
   private final Validator validator;
+  private final MeterRegistry registry;
 
-  public PaymentGatewayService(PaymentsRepository paymentsRepository, AcquiringBankClient acquiringBankClient, Validator validator) {
+  public PaymentGatewayService(PaymentsRepository paymentsRepository, AcquiringBankClient acquiringBankClient, Validator validator, MeterRegistry registry) {
     this.paymentsRepository = paymentsRepository;
     this.acquiringBankClient = acquiringBankClient;
     this.validator = validator;
+    this.registry = registry;
   }
 
   public PostPaymentResponse getPaymentById(UUID id) {
@@ -45,14 +49,24 @@ public class PaymentGatewayService {
       LOG.warn("Payment request validation failed: {}", violations.stream()
           .map(ConstraintViolation::getMessage)
           .collect(Collectors.toList()));
-      // store violations in the response
+      Counter.builder("payment.outcomes")
+          .tag("status", PaymentStatus.REJECTED.name().toLowerCase())
+          .register(registry)
+          .increment();
       return createRejectedResponse(violations);
     }
 
     AcquiringBankRequest bankRequest = buildAcquiringBankRequest(request);
     AcquiringBankResponse bankResponse = acquiringBankClient.process(bankRequest);
     PaymentStatus status = mapAcquiringBankResponse(bankResponse);
-    return createAndPersist(request, status);
+    PostPaymentResponse response = createAndPersist(request, status);
+
+    Counter.builder("payment.outcomes")
+        .tag("status", status.name().toLowerCase())
+        .register(registry)
+        .increment();
+
+    return response;
   }
 
   private AcquiringBankRequest buildAcquiringBankRequest(PostPaymentRequest request) {

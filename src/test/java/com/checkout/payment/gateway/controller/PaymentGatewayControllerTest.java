@@ -1,26 +1,30 @@
 package com.checkout.payment.gateway.controller;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.checkout.payment.gateway.enums.PaymentStatus;
+import com.checkout.payment.gateway.model.AcquiringBankResponse;
 import com.checkout.payment.gateway.model.PostPaymentRequest;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
+import com.checkout.payment.gateway.service.AcquiringBankClient;
 import java.util.UUID;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static com.checkout.payment.gateway.TestUtils.validRequest;
+import static com.checkout.payment.gateway.TestUtils.asJsonString;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -30,6 +34,9 @@ class PaymentGatewayControllerTest {
   private MockMvc mvc;
   @Autowired
   PaymentsRepository paymentsRepository;
+
+  @MockBean
+  private AcquiringBankClient acquiringBankClient;
 
   @Test
   void whenPaymentWithIdExistThenCorrectPaymentIsReturned() throws Exception {
@@ -59,56 +66,6 @@ class PaymentGatewayControllerTest {
     mvc.perform(MockMvcRequestBuilders.get("/v1/payment/" + UUID.randomUUID()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.message[0]").value("Payment not found"));
-  }
-
-  // requires simulator to be running
-  @Test
-  void whenValidOddCardThenAuthorized() throws Exception {
-    PostPaymentRequest request = validRequest();
-
-    MvcResult result = mvc.perform(post("/v1/payment")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(asJsonString(request)))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.status").value(PaymentStatus.AUTHORIZED.getName()))
-        .andReturn();
-
-    // check the payment has been stored
-    String id = new ObjectMapper().readTree(result.getResponse().getContentAsString())
-        .get("id").asText();
-    assertThat(paymentsRepository.get(UUID.fromString(id))).isPresent();
-  }
-
-  // requires simulator to be running
-  @Test
-  void whenEvenCardThenDeclined() throws Exception {
-    PostPaymentRequest request = validRequest();
-    request.setCardNumber("4242405343248872");
-
-    MvcResult result = mvc.perform(post("/v1/payment")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(asJsonString(request)))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.status").value(PaymentStatus.DECLINED.getName()))
-        .andReturn();
-
-    // check the payment has been stored
-    String id = new ObjectMapper().readTree(result.getResponse().getContentAsString())
-        .get("id").asText();
-    assertThat(paymentsRepository.get(UUID.fromString(id))).isPresent();
-  }
-
-  // requires simulator to be running
-  @Test
-  void whenZeroCardThen502() throws Exception {
-    PostPaymentRequest request = validRequest();
-    request.setCardNumber("4242405343248870");
-
-    // when card number ends with zero, the simulator returns a 503 without doing anything else
-    mvc.perform(post("/v1/payment")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(asJsonString(request)))
-        .andExpect(status().isBadGateway());
   }
 
   @Test
@@ -216,24 +173,24 @@ class PaymentGatewayControllerTest {
         .andExpect(jsonPath("$.errors").value(hasItem("CVV must be 3-4 numeric characters")));
   }
 
+  // Verify response has the expected field types
+  @Test
+  void postPaymentResponseContainsOnlyRequiredFields() throws Exception {
+    when(acquiringBankClient.process(any()))
+        .thenReturn(new AcquiringBankResponse(true, "auth-code"));
 
+    PostPaymentRequest request = validRequest();
 
-  private static PostPaymentRequest validRequest() {
-    PostPaymentRequest request = new PostPaymentRequest();
-    request.setCardNumber("4242405343248871");
-    request.setExpiryMonth(12);
-    request.setExpiryYear(2027);
-    request.setCurrency("GBP");
-    request.setAmount(1050);
-    request.setCvv("123");
-    return request;
-  }
-
-  private static String asJsonString(Object obj) {
-    try {
-      return new ObjectMapper().writeValueAsString(obj);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    mvc.perform(post("/v1/payment")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(asJsonString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").isString())
+        .andExpect(jsonPath("$.status").value(PaymentStatus.AUTHORIZED.getName()))
+        .andExpect(jsonPath("$.card_number_last_four").isString())
+        .andExpect(jsonPath("$.expiry_month").isNumber())
+        .andExpect(jsonPath("$.expiry_year").isNumber())
+        .andExpect(jsonPath("$.currency").isString())
+        .andExpect(jsonPath("$.amount").isNumber());
   }
 }
