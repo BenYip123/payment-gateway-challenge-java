@@ -20,10 +20,10 @@ jobs:
           distribution: "temurin"
 
       - name: Start bank simulator
-        run: docker-compose up -d bank_simulator
+        run: docker compose up -d bank_simulator
 
       - name: Build and test
         run: ./gradlew test
 
       - name: Stop simulator
-        run: docker-compose down
+        run: docker compose down

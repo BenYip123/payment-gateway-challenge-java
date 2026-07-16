@@ -22,7 +22,7 @@ import static com.checkout.payment.gateway.TestUtils.asJsonString;
 
 /**
  * Integration tests that require the mountebank simulator to be running on port 8080.
- * Run with: docker-compose up -d bank_simulator
+ * Run with: docker compose up -d bank_simulator
  */
 @SpringBootTest
 @AutoConfigureMockMvc

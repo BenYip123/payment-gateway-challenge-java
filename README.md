@@ -10,8 +10,8 @@ This is the Java version of the Payment Gateway challenge.
 
 I have packaged the app into a docker container and updated the docker compose file.
 
-`docker-compose up` will start up both the app and the simulator for easier setup.
-`docker-compose up bank_simulator` will start up just the simulator
+`docker compose up` will start up both the app and the simulator for easier setup.
+`docker compose up bank_simulator` will start up just the simulator
 
 To send a valid payment:
 ```
@@ -51,7 +51,7 @@ The test suite is split into three types:
 ./gradlew test
 
 # Start the simulator first, then run all tests
-docker-compose up -d bank_simulator
+docker compose up -d bank_simulator
 ./gradlew test
 ```
 
