@@ -1,6 +1,10 @@
 package com.checkout.payment.gateway.controller;
 
+import static com.checkout.payment.gateway.TestUtils.asJsonString;
+import static com.checkout.payment.gateway.TestUtils.validRequest;
 import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,6 +16,7 @@ import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
 import com.checkout.payment.gateway.service.AcquiringBankClient;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,11 +25,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static com.checkout.payment.gateway.TestUtils.validRequest;
-import static com.checkout.payment.gateway.TestUtils.asJsonString;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -37,6 +37,13 @@ class PaymentGatewayControllerTest {
 
   @MockBean
   private AcquiringBankClient acquiringBankClient;
+
+  private String idempotencyKey;
+
+  @BeforeEach
+  void setUp() {
+    idempotencyKey = UUID.randomUUID().toString();
+  }
 
   @Test
   void whenPaymentWithIdExistThenCorrectPaymentIsReturned() throws Exception {
@@ -65,7 +72,7 @@ class PaymentGatewayControllerTest {
   void whenPaymentWithIdDoesNotExistThen404IsReturned() throws Exception {
     mvc.perform(MockMvcRequestBuilders.get("/v1/payment/" + UUID.randomUUID()))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.message[0]").value("Payment not found"));
+        .andExpect(jsonPath("$.messages[0]").value("Payment not found"));
   }
 
   @Test
@@ -74,6 +81,7 @@ class PaymentGatewayControllerTest {
     request.setCurrency("HKD");
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -87,6 +95,7 @@ class PaymentGatewayControllerTest {
     request.setExpiryYear(2020);
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -100,6 +109,7 @@ class PaymentGatewayControllerTest {
     request.setCvv("");
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -113,6 +123,7 @@ class PaymentGatewayControllerTest {
     request.setCardNumber("123abc");
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -127,6 +138,7 @@ class PaymentGatewayControllerTest {
     request.setExpiryMonth(13);
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -140,6 +152,7 @@ class PaymentGatewayControllerTest {
     request.setCurrency("A23");
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -153,6 +166,7 @@ class PaymentGatewayControllerTest {
     request.setAmount(-1000);
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -166,6 +180,7 @@ class PaymentGatewayControllerTest {
     request.setCvv("ABC");
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isOk())
@@ -182,6 +197,7 @@ class PaymentGatewayControllerTest {
     PostPaymentRequest request = validRequest();
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isCreated())

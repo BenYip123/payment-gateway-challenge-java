@@ -1,5 +1,7 @@
 package com.checkout.payment.gateway.controller;
 
+import static com.checkout.payment.gateway.TestUtils.asJsonString;
+import static com.checkout.payment.gateway.TestUtils.validRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -10,6 +12,7 @@ import com.checkout.payment.gateway.model.PostPaymentRequest;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,8 +20,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import static com.checkout.payment.gateway.TestUtils.validRequest;
-import static com.checkout.payment.gateway.TestUtils.asJsonString;
 
 /**
  * Integration tests that require the mountebank simulator to be running on port 8080.
@@ -34,11 +35,19 @@ class PaymentGatewayIntegrationTest {
   @Autowired
   PaymentsRepository paymentsRepository;
 
+  private String idempotencyKey;
+
+  @BeforeEach
+  void setUp() {
+    idempotencyKey = UUID.randomUUID().toString();
+  }
+
   @Test
   void whenValidOddCardThenAuthorized() throws Exception {
     PostPaymentRequest request = validRequest();
 
     MvcResult result = mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isCreated())
@@ -56,6 +65,7 @@ class PaymentGatewayIntegrationTest {
     request.setCardNumber("4242405343248872");
 
     MvcResult result = mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isCreated())
@@ -73,6 +83,7 @@ class PaymentGatewayIntegrationTest {
     request.setCardNumber("4242405343248870");
 
     mvc.perform(post("/v1/payment")
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(asJsonString(request)))
         .andExpect(status().isBadGateway());

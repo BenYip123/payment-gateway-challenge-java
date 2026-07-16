@@ -7,13 +7,14 @@ import com.checkout.payment.gateway.model.AcquiringBankResponse;
 import com.checkout.payment.gateway.model.PostPaymentRequest;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validator;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class PaymentGatewayService {
   private final AcquiringBankClient acquiringBankClient;
   private final Validator validator;
   private final MeterRegistry registry;
+  private final ConcurrentHashMap<String, PostPaymentResponse> idempotencyStore = new ConcurrentHashMap<>();
 
   public PaymentGatewayService(PaymentsRepository paymentsRepository, AcquiringBankClient acquiringBankClient, Validator validator, MeterRegistry registry) {
     this.paymentsRepository = paymentsRepository;
@@ -41,7 +43,14 @@ public class PaymentGatewayService {
         .orElseThrow(() -> new PaymentNotFoundException("Payment with ID " + id + " not found"));
   }
 
-  public PostPaymentResponse processPayment(PostPaymentRequest request) {
+  public PostPaymentResponse processPayment(PostPaymentRequest request, String idempotencyKey) {
+    // Check idempotency — return cached result if this key was already processed
+    PostPaymentResponse cached = idempotencyStore.get(idempotencyKey);
+    if (cached != null) {
+      LOG.info("Idempotent request with key {}", idempotencyKey);
+      return cached;
+    }
+
     // Validate annotations using Bean Validation API
     Set<ConstraintViolation<PostPaymentRequest>> violations = validator.validate(request);
 
@@ -60,6 +69,8 @@ public class PaymentGatewayService {
     AcquiringBankResponse bankResponse = acquiringBankClient.process(bankRequest);
     PaymentStatus status = mapAcquiringBankResponse(bankResponse);
     PostPaymentResponse response = createAndPersist(request, status);
+
+    idempotencyStore.put(idempotencyKey, response);
 
     Counter.builder("payment.outcomes")
         .tag("status", status.name().toLowerCase())

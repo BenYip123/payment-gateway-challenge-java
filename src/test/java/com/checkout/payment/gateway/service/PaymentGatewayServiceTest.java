@@ -1,11 +1,19 @@
 package com.checkout.payment.gateway.service;
 
+import static com.checkout.payment.gateway.TestUtils.validRequest;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 import com.checkout.payment.gateway.enums.PaymentStatus;
 import com.checkout.payment.gateway.exception.PaymentNotFoundException;
 import com.checkout.payment.gateway.model.AcquiringBankResponse;
 import com.checkout.payment.gateway.model.PostPaymentRequest;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -13,13 +21,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpServerErrorException;
-
-import java.util.UUID;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,15 +35,16 @@ class PaymentGatewayServiceTest {
   @Autowired
   private PaymentsRepository paymentsRepository;
 
+  private String idempotencyKey;
+
+  @BeforeEach
+  void setUp() {
+    idempotencyKey = UUID.randomUUID().toString();
+  }
+
   @Test
   void whenBankAuthorizesThenAuthorized() {
-    PostPaymentRequest request = new PostPaymentRequest();
-    request.setCardNumber("4242405343248871");
-    request.setExpiryMonth(12);
-    request.setExpiryYear(2027);
-    request.setCurrency("GBP");
-    request.setAmount(1050);
-    request.setCvv("123");
+    PostPaymentRequest request = validRequest();
 
     AcquiringBankResponse bankResponse = new AcquiringBankResponse(
         true,
@@ -51,7 +53,7 @@ class PaymentGatewayServiceTest {
 
     when(acquiringBankClient.process(any())).thenReturn(bankResponse);
 
-    PostPaymentResponse response = paymentGatewayService.processPayment(request);
+    PostPaymentResponse response = paymentGatewayService.processPayment(request, idempotencyKey);
 
     assertThat(response.getStatus()).isEqualTo(PaymentStatus.AUTHORIZED);
     assertThat(response.getId()).isNotNull();
@@ -60,13 +62,7 @@ class PaymentGatewayServiceTest {
 
   @Test
   void whenBankDeclinesThenDeclined() {
-    PostPaymentRequest request = new PostPaymentRequest();
-    request.setCardNumber("4242405343248871");
-    request.setExpiryMonth(12);
-    request.setExpiryYear(2027);
-    request.setCurrency("GBP");
-    request.setAmount(1050);
-    request.setCvv("123");
+    PostPaymentRequest request = validRequest();
 
     AcquiringBankResponse bankResponse = new AcquiringBankResponse(
         false,
@@ -75,7 +71,7 @@ class PaymentGatewayServiceTest {
 
     when(acquiringBankClient.process(any())).thenReturn(bankResponse);
 
-    PostPaymentResponse response = paymentGatewayService.processPayment(request);
+    PostPaymentResponse response = paymentGatewayService.processPayment(request, idempotencyKey);
 
     assertThat(response.getStatus()).isEqualTo(PaymentStatus.DECLINED);
     assertThat(response.getId()).isNotNull();
@@ -84,17 +80,11 @@ class PaymentGatewayServiceTest {
 
   @Test
   void whenBankUnavailableThenThrows() {
-    PostPaymentRequest request = new PostPaymentRequest();
-    request.setCardNumber("4242405343248871");
-    request.setExpiryMonth(12);
-    request.setExpiryYear(2027);
-    request.setCurrency("GBP");
-    request.setAmount(1050);
-    request.setCvv("123");
+    PostPaymentRequest request = validRequest();
 
     when(acquiringBankClient.process(any())).thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
 
-    assertThatThrownBy(() -> paymentGatewayService.processPayment(request))
+    assertThatThrownBy(() -> paymentGatewayService.processPayment(request, idempotencyKey))
         .isInstanceOf(HttpServerErrorException.class);
   }
 

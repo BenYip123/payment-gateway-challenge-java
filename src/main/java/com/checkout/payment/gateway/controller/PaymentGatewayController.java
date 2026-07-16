@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController("api")
@@ -37,16 +38,22 @@ public class PaymentGatewayController {
   @PostMapping("/v1/payment")
   @Operation(summary = "Process a payment", description = "Submit a card payment for processing")
   @ApiResponse(responseCode = "201", description = "Payment processed successfully")
-  @ApiResponse(responseCode = "200", description = "Payment rejected due to validation")
+  @ApiResponse(responseCode = "200", description = "Payment rejected due to validation or duplicate request")
+  @ApiResponse(responseCode = "400", description = "Missing header or invalid body")
   @ApiResponse(responseCode = "502", description = "Bank service unavailable")
-  public ResponseEntity<PostPaymentResponse> processPayment(@RequestBody PostPaymentRequest request) {
-    PostPaymentResponse response = paymentGatewayService.processPayment(request);
+  public ResponseEntity<PostPaymentResponse> processPayment(
+          @RequestBody PostPaymentRequest request,
+          @RequestHeader("Idempotency-Key") String idempotencyKey) {
 
-    // when Payment status is rejected (usually from validation check), we return a 200
+    PostPaymentResponse response = paymentGatewayService.processPayment(request, idempotencyKey);
+
     HttpStatus status = response.getStatus() == PaymentStatus.REJECTED
         ? HttpStatus.OK
         : HttpStatus.CREATED;
-    return new ResponseEntity<>(response, status);
+
+    return ResponseEntity.status(status)
+        .header("Idempotency-Key", idempotencyKey)
+        .body(response);
   }
 
 }

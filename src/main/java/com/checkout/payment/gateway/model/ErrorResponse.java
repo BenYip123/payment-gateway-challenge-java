@@ -4,20 +4,20 @@ import java.util.List;
 
 public class ErrorResponse {
   // use a list of Strings to store multiple error messages (e.g. validation errors)
-  private final List<String> message;
+  private final List<String> messages;
 
   public ErrorResponse(List<String> messages) {
-    this.message = messages;
+    this.messages = messages;
   }
 
-  public List<String> getMessage() {
-    return message;
+  public List<String> getMessages() {
+    return messages;
   }
 
   @Override
   public String toString() {
     return "ErrorResponse{" +
-        "message='" + message + '\'' +
+        "messages='" + messages + '\'' +
         '}';
   }
 }

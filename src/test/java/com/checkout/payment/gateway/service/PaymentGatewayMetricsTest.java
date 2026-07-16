@@ -1,17 +1,19 @@
 package com.checkout.payment.gateway.service;
 
-import com.checkout.payment.gateway.model.AcquiringBankResponse;
-import com.checkout.payment.gateway.model.PostPaymentRequest;
-import io.micrometer.core.instrument.MeterRegistry;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-
 import static com.checkout.payment.gateway.TestUtils.validRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+
+import com.checkout.payment.gateway.model.AcquiringBankResponse;
+import com.checkout.payment.gateway.model.PostPaymentRequest;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 @SpringBootTest
 class PaymentGatewayMetricsTest {
@@ -25,6 +27,13 @@ class PaymentGatewayMetricsTest {
   @Autowired
   private MeterRegistry meterRegistry;
 
+  private String idempotencyKey;
+
+  @BeforeEach
+  void setUp() {
+    idempotencyKey = UUID.randomUUID().toString();
+  }
+
   @Test
   void whenBankAuthorizesThenRecordsMetric() {
     PostPaymentRequest request = validRequest();
@@ -36,7 +45,7 @@ class PaymentGatewayMetricsTest {
 
     when(acquiringBankClient.process(any())).thenReturn(bankResponse);
 
-    paymentGatewayService.processPayment(request);
+    paymentGatewayService.processPayment(request, idempotencyKey);
 
     assertThat(meterRegistry.get("payment.outcomes")
             .tag("status", "authorized").counter().count()).isOne();
@@ -53,7 +62,7 @@ class PaymentGatewayMetricsTest {
 
     when(acquiringBankClient.process(any())).thenReturn(bankResponse);
 
-    paymentGatewayService.processPayment(request);
+    paymentGatewayService.processPayment(request, idempotencyKey);
 
     assertThat(meterRegistry.get("payment.outcomes")
             .tag("status", "declined").counter().count()).isOne();
@@ -61,15 +70,13 @@ class PaymentGatewayMetricsTest {
 
   @Test
   void whenValidationFailsThenRecordsRejectedMetric() {
-    PostPaymentRequest request = new PostPaymentRequest();
+    PostPaymentRequest request = validRequest();
     request.setCardNumber("bad");
-    request.setExpiryMonth(13);
-    request.setExpiryYear(2027);
     request.setCurrency("XYZ");
     request.setAmount(-1);
     request.setCvv("");
 
-    paymentGatewayService.processPayment(request);
+    paymentGatewayService.processPayment(request, idempotencyKey);
 
     assertThat(meterRegistry.get("payment.outcomes")
             .tag("status", "rejected").counter().count()).isOne();

@@ -15,7 +15,7 @@ I have packaged the app into a docker container and updated the docker compose f
 
 To send a valid payment:
 ```
-curl -X POST http://localhost:8090/v1/payment -H "Content-Type: application/json" -d '{"card_number":"4242405343248871","expiry_month":12,"expiry_year":2027,"currency":"GBP","amount":1050,"cvv":"123"}'
+curl -X POST http://localhost:8090/v1/payment -H "Content-Type: application/json" -H "Idempotency-Key: test-key-123" -d '{"card_number":"4242405343248871","expiry_month":12,"expiry_year":2027,"currency":"GBP","amount":1050,"cvv":"123"}'
 ```
 Get a non existent payment:
 ```
@@ -23,7 +23,7 @@ curl http://localhost:8090/v1/payment/ef399a46-a12c-46d8-acfc-64140c3cda2e
 ```
 Post a payment with validation errors:
 ```
-curl -X POST http://localhost:8090/v1/payment -H "Content-Type: application/json" -d '{"card_number":"bad","expiry_month":13,"expiry_year":2027,"currency":"XYZ","amount":-1,"cvv":""}'
+curl -X POST http://localhost:8090/v1/payment -H "Content-Type: application/json" -H "Idempotency-Key: test-key-456" -d '{"card_number":"bad","expiry_month":13,"expiry_year":2027,"currency":"XYZ","amount":-1,"cvv":""}'
 ```
 
 Other accessible endpoints:
@@ -43,7 +43,7 @@ The test suite is split into three types:
 |---|---|---|
 | Smoke | `SmokeTest` | No |
 | Unit | `PaymentGatewayServiceTest`, `PaymentGatewayControllerTest` | No |
-| Feature | `CorrelationIdFilterTest`, `PaymentGatewayMetricsTest` | No |
+| Feature | `CorrelationIdFilterTest`, `PaymentGatewayMetricsTest`, `PaymentIdempotencyTest` | No |
 | Integration | `PaymentGatewayIntegrationTest` | Yes |
 
 ```bash
@@ -61,7 +61,6 @@ Some assumptions I considered:
 - If the bank returns a 503, we just pass it through the system and no retry logic.
 - Hardcoded supported currencies of USD, GBP, EUR (requirements mention max 3)
 - No API authentication
-- No idempotency for the scale of this project
 - In-memory payment storage
 
 ## Key Design Considerations
@@ -69,6 +68,7 @@ Some assumptions I considered:
 - Created custom annotations (`@ValidExpiryDate`, `@SupportedCurrency`) with bean validation for validating with multiple field (expiryMonth and expiryYear needed for expiryDate)
 - Rejected payments return 200 — the bank is never contacted for invalid requests. No retry.
 - Each request gets a unique `X-Correlation-Id` header via a servlet filter using MDC for log tracing.
+- Idempotency Key required in header, returns response if already in cache, otherwise process request then store in cache.
 - GetPaymentResponse is unused and we currently use PostPaymentResponse for when retrieving the payment as the shape of the response is exactly the same.
 - Keep CVV hidden for security.
 - Use adapter pattern with AcquiringBankClient and RestTemplateAcquiringBankClient to allow easily swappable implementations and easier mocking for tests.
@@ -79,3 +79,4 @@ Some assumptions I considered:
 - Actuator provides health and prometheus endpoints for auto-collected HTTP/JVM metrics.
 - Provide basic payment metrics that increments outcome based on status (e.g. payment_outcomes_total{status="authorized"})
 - Multi-stage DockerFile to allow Docker Compose to start both app and simulator.
+- Add GitHub Actions for CI
